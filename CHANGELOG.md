@@ -1,5 +1,8 @@
 # gradle-dependencies-sorter
 
+## Version 0.19.0
+* [Feat]: support parsing and sorting dependencies blocks with dot syntax.
+
 ## Version 0.18.0
 * [Fix]: make sorting of files() dependencies stable.
 * [Fix]: update kotlin-editor to latest.
