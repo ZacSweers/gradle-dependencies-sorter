@@ -3,6 +3,7 @@
 ## Unreleased
 * [Fix]: preserve indentation in nested dependencies blocks.
 * [Fix]: fix partial matches in the dependency types being sorted backwards.
+* [Fix]: add missing dependency types `androidTestCompileOnly` and `androidTestRuntimeOnly`.
 
 ## Version 0.20.0
 * [Feat]: bump kotlin-editor.
