@@ -294,6 +294,340 @@ class KotlinSorterSpec extends Specification {
     lineSeparator << ['\n', '\r\n']
   }
 
+  // https://github.com/square/gradle-dependencies-sorter/issues/95
+  def "sorts Gradle dependency constraints"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      dependencies {
+        constraints {
+          runtime("g:c:1")
+          // Required by the Gradle plugin.
+          api("g:b:1") {
+            because("The plugin loads this dependency directly")
+          }
+          api("g:a:1")
+        }
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def newScript = KotlinSorter.of(buildScript, new Sorter.Config(true), lineSeparator).rewritten()
+
+    then:
+    extractLineSeparators(newScript).every { it == lineSeparator }
+    assertThat(trimmedLinesOf(newScript)).containsExactlyElementsIn(trimmedLinesOf(
+      '''\
+      dependencies {
+        constraints {
+          api("g:a:1")
+          // Required by the Gradle plugin.
+          api("g:b:1") {
+            because("The plugin loads this dependency directly")
+          }
+          runtime("g:c:1")
+        }
+      }
+      '''.stripIndent()
+    )).inOrder()
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  // https://github.com/square/gradle-dependencies-sorter/issues/95
+  def "sorts dependency constraints independently"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      dependencies {
+        constraints {
+          runtime("g:c:1")
+          api("g:b:1")
+          api("g:a:1")
+        }
+
+        implementation(libs.z)
+        implementation(libs.a)
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def config = new Sorter.Config(true)
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+
+    then:
+    extractLineSeparators(newScript).every { it == lineSeparator }
+    assertThat(trimmedLinesOf(newScript)).containsExactlyElementsIn(trimmedLinesOf(
+      '''\
+      dependencies {
+        constraints {
+          api("g:a:1")
+          api("g:b:1")
+          runtime("g:c:1")
+        }
+
+        implementation(libs.a)
+        implementation(libs.z)
+      }
+      '''.stripIndent()
+    )).inOrder()
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "only rewrites constraints when dependencies are ordered"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      dependencies {
+        implementation(libs.a)
+
+        constraints {
+          runtime("g:b:1")
+          api("g:a:1")
+        }
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def newScript = KotlinSorter.of(buildScript, new Sorter.Config(true), lineSeparator).rewritten()
+
+    then:
+    newScript == normalize('''\
+      dependencies {
+        implementation(libs.a)
+
+        constraints {
+          api("g:a:1")
+          runtime("g:b:1")
+        }
+      }
+      ''', lineSeparator)
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "sorts a qualified custom block"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      subprojects {
+        sqldelight {
+          databases {
+            create<Database>("main") {
+              zeta() // Keep this with zeta.
+              // Keep this with beta.
+              beta {
+                enabled = true
+              }
+              alpha()
+
+              val marker = "fixed"
+
+              delta()
+              charlie()
+            }
+          }
+        }
+
+        other {
+          create("unrelated") {
+            zeta()
+            alpha()
+          }
+        }
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def config = new Sorter.Config(true, ['sqldelight.databases.create'] as Set)
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+
+    then:
+    newScript == normalize('''\
+      subprojects {
+        sqldelight {
+          databases {
+            create<Database>("main") {
+              alpha()
+              // Keep this with beta.
+              beta {
+                enabled = true
+              }
+              zeta() // Keep this with zeta.
+
+              val marker = "fixed"
+
+              charlie()
+              delta()
+            }
+          }
+        }
+
+        other {
+          create("unrelated") {
+            zeta()
+            alpha()
+          }
+        }
+      }
+      ''', lineSeparator)
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "sorts a custom block inside dependencies"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      dependencies {
+        intellijPlatform {
+          testFramework(TestFrameworkType.Platform)
+          bundledPlugin("com.intellij.java")
+          instrumentationTools()
+        }
+
+        implementation(libs.z)
+        implementation(libs.a)
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def config = new Sorter.Config(true, ['dependencies.intellijPlatform'] as Set)
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+
+    then:
+    newScript == normalize('''\
+      dependencies {
+        intellijPlatform {
+          bundledPlugin("com.intellij.java")
+          instrumentationTools()
+          testFramework(TestFrameworkType.Platform)
+        }
+
+        implementation(libs.a)
+        implementation(libs.z)
+      }
+      ''', lineSeparator)
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "does not treat an anonymous lambda as a configured block"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      custom {
+        zeta()
+        register(action = {
+          zeta()
+          alpha()
+        })
+        alpha()
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def config = new Sorter.Config(true, ['custom'] as Set)
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+
+    then:
+    newScript == normalize('''\
+      custom {
+        alpha()
+        register(action = {
+          zeta()
+          alpha()
+        })
+        zeta()
+      }
+      ''', lineSeparator)
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "keeps lambda parameters before sorted statements"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      custom { value ->
+        zeta(value)
+        alpha(value)
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+
+    when:
+    def config = new Sorter.Config(true, ['custom'] as Set)
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+
+    then:
+    newScript == normalize('''\
+      custom { value ->
+        alpha(value)
+        zeta(value)
+      }
+      ''', lineSeparator)
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
+  def "sorts a parent using rewritten child blocks"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize('''\
+      containers {
+        item {
+          zeta()
+          alpha()
+        }
+        item {
+          beta()
+          omega()
+        }
+      }
+      ''', lineSeparator)
+    Files.writeString(buildScript, fileContent)
+    def config = new Sorter.Config(true, ['containers', 'containers.item'] as Set)
+
+    when:
+    def newScript = KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+    Files.writeString(buildScript, newScript)
+
+    then:
+    newScript == normalize('''\
+      containers {
+        item {
+          alpha()
+          zeta()
+        }
+        item {
+          beta()
+          omega()
+        }
+      }
+      ''', lineSeparator)
+    assertThrows(AlreadyOrderedException) {
+      KotlinSorter.of(buildScript, config, lineSeparator).rewritten()
+    }
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
   def "can sort build script with four-space tabs"() {
     given:
     def buildScript = dir.resolve('build.gradle.kts')
