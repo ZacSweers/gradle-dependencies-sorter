@@ -65,6 +65,7 @@ class SortDependenciesPlugin : Plugin<Project> {
     sortProgram.setFrom(sortApp)
     version.set(extension.version)
     insertBlankLines.set(extension.insertBlankLines)
+    blocks.set(extension.blocks)
   }
 
   private fun CheckSortDependenciesTask.configure(
@@ -78,5 +79,6 @@ class SortDependenciesPlugin : Plugin<Project> {
     version.set(extension.version)
     output.set(layout.buildDirectory.file("reports/dependencies-sorter/report.txt"))
     insertBlankLines.set(extension.insertBlankLines)
+    blocks.set(extension.blocks)
   }
 }
