@@ -109,7 +109,7 @@ final class FunctionalSpec extends Specification {
       }""").stripIndent()
   }
 
-  def "can configure a block"() {
+  def "can configure blocks"() {
     given:
     def buildScript = dir.resolve('build.gradle.kts')
     Files.writeString(buildScript, normalize("""\
@@ -119,7 +119,7 @@ final class FunctionalSpec extends Specification {
       }
 
       sortDependencies {
-        block("configurations")
+        blocks("configurations", "tasks")
       }
 
       repositories {
@@ -129,6 +129,11 @@ final class FunctionalSpec extends Specification {
       configurations {
         create("z")
         create("a")
+      }
+
+      tasks {
+        register("z")
+        register("a")
       }
       """).stripIndent())
 
@@ -146,7 +151,7 @@ final class FunctionalSpec extends Specification {
       }
 
       sortDependencies {
-        block("configurations")
+        blocks("configurations", "tasks")
       }
 
       repositories {
@@ -156,6 +161,11 @@ final class FunctionalSpec extends Specification {
       configurations {
         create("a")
         create("z")
+      }
+
+      tasks {
+        register("a")
+        register("z")
       }
       """).stripIndent()
 
