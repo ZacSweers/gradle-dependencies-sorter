@@ -4,10 +4,12 @@ import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.misc.Interval
 
 /**
- * Classifies ANTLR source offsets as code, strings, or comments.
+ * Tracks which parts of a Groovy script are code, strings, or comments.
  *
- * The Groovy grammar can expose block-shaped text inside strings and comments. ANTLR indexes Unicode code points,
- * while JVM strings use UTF-16 offsets, so [charOffsets] translates between the two.
+ * The parser can mistake text inside a string, such as `"custom {}"`, for a real Gradle block. Marking strings and
+ * comments lets the sorter ignore those false matches.
+ *
+ * ANTLR indexes Unicode code points, while JVM strings use UTF-16 offsets, so [charOffsets] translates between the two.
  */
 internal class GroovySource(input: CharStream) {
 
