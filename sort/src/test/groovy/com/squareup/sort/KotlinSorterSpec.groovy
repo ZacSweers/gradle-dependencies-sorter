@@ -379,12 +379,13 @@ class KotlinSorterSpec extends Specification {
     lineSeparator << ['\n', '\r\n']
   }
 
-  def "only rewrites constraints when dependencies are ordered"() {
+  def "sorts constraints when the containing dependencies are already ordered"() {
     given:
     def buildScript = dir.resolve('build.gradle.kts')
     def fileContent = normalize('''\
       dependencies {
         implementation(libs.a)
+        implementation(libs.z)
 
         constraints {
           runtime("g:b:1")
@@ -401,6 +402,7 @@ class KotlinSorterSpec extends Specification {
     newScript == normalize('''\
       dependencies {
         implementation(libs.a)
+        implementation(libs.z)
 
         constraints {
           api("g:a:1")
