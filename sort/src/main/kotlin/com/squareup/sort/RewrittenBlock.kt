@@ -16,6 +16,24 @@ internal data class SourceReplacement(
   val text: String,
 )
 
+/** Stable source and token ranges for a parsed block. */
+private data class BlockRange(
+  val sourceStartIndex: Int,
+  val sourceStopIndex: Int,
+  val tokenStartIndex: Int,
+  val tokenStopIndex: Int,
+) {
+  /** Returns true when [other] is wholly contained by this source range. */
+  fun contains(other: BlockRange): Boolean {
+    return other.isWithin(sourceStartIndex, sourceStopIndex)
+  }
+
+  /** Returns true when this block is wholly contained by the inclusive source range. */
+  fun isWithin(startIndex: Int, stopIndex: Int): Boolean {
+    return sourceStartIndex >= startIndex && sourceStopIndex <= stopIndex
+  }
+}
+
 /**
  * Stores block rewrites, composes changed descendants when rendering, and applies only outermost changes.
  *
@@ -25,14 +43,14 @@ internal data class SourceReplacement(
 internal class RewrittenBlocks(
   private val originalText: (Int, Int) -> String,
 ) {
-  private val blocks = linkedMapOf<ParserRuleContext, RewrittenBlock>()
+  private val blocks = linkedMapOf<BlockRange, RewrittenBlock>()
 
   val isAlreadyOrdered: Boolean
     get() = blocks.values.all { it.isAlreadyOrdered }
 
   /** Records the rendered result for a block after its descendants have been visited. */
   operator fun set(block: ParserRuleContext, rewritten: RewrittenBlock) {
-    blocks[block] = rewritten
+    blocks[block.toBlockRange()] = rewritten
   }
 
   /** Renders [block] with any changed descendant blocks already applied. */
@@ -66,13 +84,13 @@ internal class RewrittenBlocks(
       .filter { candidate ->
         blocks.entries.none { other ->
           !other.value.isAlreadyOrdered &&
-            other.key !== candidate.key &&
+            other.key != candidate.key &&
             other.key.isWithin(startIndex, stopIndex) &&
             other.key.contains(candidate.key)
         }
       }
       .map { (block, rewritten) ->
-        SourceReplacement(block.start.startIndex, block.stop.stopIndex, rewritten.text)
+        SourceReplacement(block.sourceStartIndex, block.sourceStopIndex, rewritten.text)
       }
 
     val allReplacements = (replacements + descendants).sortedBy { it.startIndex }
@@ -97,20 +115,20 @@ internal class RewrittenBlocks(
     val changed = blocks.entries.filter { !it.value.isAlreadyOrdered }
     changed.filter { candidate ->
       changed.none { other ->
-        other.key !== candidate.key && other.key.contains(candidate.key)
+        other.key != candidate.key && other.key.contains(candidate.key)
       }
     }.forEach { (block, rewritten) ->
-      rewriter.replace(block.start, block.stop, rewritten.text)
+      rewriter.replace(block.tokenStartIndex, block.tokenStopIndex, rewritten.text)
     }
   }
 }
 
-/** Returns true when [other] is wholly contained by this context's inclusive source range. */
-private fun ParserRuleContext.contains(other: ParserRuleContext): Boolean {
-  return other.isWithin(start.startIndex, stop.stopIndex)
-}
-
-/** Returns true when this context is wholly contained by the inclusive source range. */
-private fun ParserRuleContext.isWithin(startIndex: Int, stopIndex: Int): Boolean {
-  return start.startIndex >= startIndex && stop.stopIndex <= stopIndex
+/** Captures immutable source and token positions instead of retaining the parser context. */
+private fun ParserRuleContext.toBlockRange(): BlockRange {
+  return BlockRange(
+    sourceStartIndex = start.startIndex,
+    sourceStopIndex = stop.stopIndex,
+    tokenStartIndex = start.tokenIndex,
+    tokenStopIndex = stop.tokenIndex,
+  )
 }
