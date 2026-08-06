@@ -777,12 +777,13 @@ final class GroovySorterSpec extends Specification {
     lineSeparator << ['\n', '\r\n']
   }
 
-  def "only rewrites constraints when dependencies are ordered"() {
+  def "sorts constraints when the containing dependencies are already ordered"() {
     given:
     def buildScript = dir.resolve('build.gradle')
     def fileContent = normalize('''\
       dependencies {
         implementation libs.a
+        implementation libs.z
 
         constraints {
           runtime 'g:b:1'
@@ -799,6 +800,7 @@ final class GroovySorterSpec extends Specification {
     newScript == normalize('''\
       dependencies {
         implementation libs.a
+        implementation libs.z
 
         constraints {
           api 'g:a:1'
