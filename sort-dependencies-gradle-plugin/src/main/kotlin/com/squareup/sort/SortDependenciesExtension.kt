@@ -16,7 +16,7 @@ import javax.inject.Inject
  *   insertBlankLines = false
  *
  *   // Sort direct calls in matching Gradle DSL blocks
- *   block("sqldelight.databases.create")
+ *   blocks("sqldelight.databases.create")
  *
  *   // true by default, meaning that 'checkSortDependencies' is a dependency of 'check'
  *   check(true)
@@ -47,9 +47,9 @@ abstract class SortDependenciesExtension @Inject constructor(
     .setProperty(String::class.java)
     .convention(emptySet())
 
-  /** Sorts direct calls in Gradle DSL blocks matching [path]. */
-  fun block(path: String) {
-    blocks.add(path)
+  /** Sorts direct calls in Gradle DSL blocks matching any of [paths]. */
+  fun blocks(vararg paths: String) {
+    blocks.addAll(*paths)
   }
 
   internal val check: Property<Boolean> = objects.property(Boolean::class.java).convention(true)

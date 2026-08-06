@@ -2,7 +2,7 @@
 
 ## Unreleased
 * [Feat]: sort dependency `constraints` blocks by default.
-* [Feat]: add `--block` and `block(...)` for sorting custom Gradle DSL blocks in Kotlin and Groovy build scripts.
+* [Feat]: add `--block` and `blocks(...)` for sorting custom Gradle DSL blocks in Kotlin and Groovy build scripts.
 * [Fix]: preserve indentation in nested dependencies blocks.
 * [Fix]: fix partial matches in the dependency types being sorted backwards.
 * [Fix]: add missing dependency types `androidTestCompileOnly` and `androidTestRuntimeOnly`.
