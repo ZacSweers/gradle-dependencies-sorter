@@ -91,12 +91,26 @@ final class SortCommandSpec extends Specification {
     fileName << ['build.gradle', 'build.gradle.kts']
   }
 
-  def "rejects an invalid block path"() {
+  def "rejects invalid block path '#blockPath'"() {
     given:
     def sortCommand = newSortCommand()
 
-    expect:
-    runSortCommand(sortCommand, '--block', 'dependencies..constraints', dir.toString()) == 1
+    when:
+    sortCommand.parse(['--block', blockPath, dir.toString()] as String[], null)
+
+    then:
+    def error = thrown(UsageError)
+    error.message == 'Each block path must contain one or more non-blank segments separated by dots.'
+
+    where:
+    blockPath << [
+      '',
+      ' ',
+      '.dependencies',
+      'dependencies.',
+      'dependencies..constraints',
+      'dependencies. .constraints',
+    ]
   }
 
   def "fails with no paths passed in"() {

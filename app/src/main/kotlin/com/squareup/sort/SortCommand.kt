@@ -78,7 +78,9 @@ class SortCommand(
     "--block",
     help = "Also sort direct calls in a matching Gradle DSL block. May be repeated.",
   ).multiple().validate { paths ->
-    require(paths.all(::isValidBlockPath)) { "Block paths must be dot-separated names." }
+    require(paths.all(::isValidBlockPath)) {
+      "Each block path must contain one or more non-blank segments separated by dots."
+    }
   }
 
   val mode by option(
@@ -286,5 +288,5 @@ private fun logger(quiet: Boolean): DelegatingLogger {
 }
 
 private fun isValidBlockPath(path: String): Boolean {
-  return path.split('.').all { it.isNotBlank() }
+  return path.isNotBlank() && path.split('.').none(String::isBlank)
 }
