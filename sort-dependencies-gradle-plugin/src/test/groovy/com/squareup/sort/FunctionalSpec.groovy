@@ -109,6 +109,70 @@ final class FunctionalSpec extends Specification {
       }""").stripIndent()
   }
 
+  def "can configure blocks"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    Files.writeString(buildScript, normalize("""\
+      plugins {
+        `java-library`
+        id("com.squareup.sort-dependencies")
+      }
+
+      sortDependencies {
+        blocks("configurations", "tasks")
+      }
+
+      repositories {
+        maven { url = uri("$REPO") }
+      }
+
+      configurations {
+        create("z")
+        create("a")
+      }
+
+      tasks {
+        register("z")
+        register("a")
+      }
+      """).stripIndent())
+
+    expect: 'The check task sees the custom block'
+    buildAndFail(dir, 'checkSortDependencies')
+
+    when:
+    build(dir, 'sortDependencies')
+
+    then:
+    buildScript.text == normalize("""\
+      plugins {
+        `java-library`
+        id("com.squareup.sort-dependencies")
+      }
+
+      sortDependencies {
+        blocks("configurations", "tasks")
+      }
+
+      repositories {
+        maven { url = uri("$REPO") }
+      }
+
+      configurations {
+        create("a")
+        create("z")
+      }
+
+      tasks {
+        register("a")
+        register("z")
+      }
+      """).stripIndent()
+
+    and:
+    build(dir, 'checkSortDependencies')
+  }
+
   def "can sort build.gradle.kts with string property declaration"() {
     given: 'A build script with unsorted dependencies'
     def buildScript = dir.resolve('build.gradle.kts')

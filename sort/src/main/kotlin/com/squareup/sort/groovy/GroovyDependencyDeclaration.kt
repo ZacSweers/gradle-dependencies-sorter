@@ -93,13 +93,7 @@ internal class GroovyDependencyDeclaration(
         else -> error("Unknown declaration kind. Was ${declaration.text}.")
       }
 
-      val dependencyKind = when (declaration) {
-        is NormalDeclarationContext -> DependencyKind.of(declaration.dependency(), filePath)
-        is EnforcedPlatformDeclarationContext -> DependencyKind.of(declaration.dependency(), filePath)
-        is PlatformDeclarationContext -> DependencyKind.of(declaration.dependency(), filePath)
-        is TestFixturesDeclarationContext -> DependencyKind.of(declaration.dependency(), filePath)
-        else -> error("Unknown declaration kind. Was ${declaration.text}.")
-      }
+      val dependencyKind = DependencyKind.of(dependency, filePath)
 
       return GroovyDependencyDeclaration(declaration, dependency, declarationKind, dependencyKind)
     }
