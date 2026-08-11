@@ -164,6 +164,35 @@ class KotlinSorterSpec extends Specification {
     lineSeparator << ['\n', '\r\n']
   }
 
+  // https://github.com/square/gradle-dependencies-sorter/issues/88
+  def "can sort dependencies declared with the kotlin function helper"() {
+    given:
+    def buildScript = dir.resolve('build.gradle.kts')
+    def fileContent = normalize(
+      '''\
+          dependencies {
+            implementation(kotlin("test-junit"))
+            implementation(kotlin("test"))
+          }''',
+      lineSeparator)
+    Files.writeString(buildScript, fileContent)
+    def config = new Sorter.Config(true)
+    def sorter = KotlinSorter.of(buildScript, config, lineSeparator)
+
+    expect:
+    extractLineSeparators(sorter.rewritten()).every { it == lineSeparator }
+    assertThat(trimmedLinesOf(sorter.rewritten())).containsExactlyElementsIn(trimmedLinesOf(
+      '''\
+          dependencies {
+            implementation(kotlin("test"))
+            implementation(kotlin("test-junit"))
+          }'''.stripIndent()
+    )).inOrder()
+
+    where:
+    lineSeparator << ['\n', '\r\n']
+  }
+
   def "can sort testFixtures correctly"() {
     given:
     def buildScript = dir.resolve('build.gradle.kts')
