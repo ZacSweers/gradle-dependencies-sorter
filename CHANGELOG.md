@@ -1,6 +1,8 @@
 # gradle-dependencies-sorter
 
 ## Unreleased
+
+## Version 0.21.0
 * [Feat]: sort dependency `constraints` blocks by default.
 * [Feat]: add `--block` and `blocks(...)` for sorting custom Gradle DSL blocks in Kotlin and Groovy build scripts.
 * [Fix]: preserve indentation in nested dependencies blocks.
